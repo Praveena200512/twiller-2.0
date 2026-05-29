@@ -1,0 +1,275 @@
+import React, { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
+
+import { Button } from "./ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "./ui/tabs";
+import { Card, CardContent } from "./ui/card";
+
+import {
+  ArrowLeft,
+  Calendar,
+  Camera,
+  LinkIcon,
+  MapPin,
+  MoreHorizontal,
+} from "lucide-react";
+
+import TweetCard from "./TweetCard";
+import EditProfile from "./Editprofile";
+import axiosInstance from "@/lib/axiosInstance";
+
+const ProfilePage = () => {
+  const { user } = useAuth();
+
+  const [activeTab, setActiveTab] = useState("posts");
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [tweets, setTweets] = useState<any>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchTweet();
+  }, []);
+
+  const fetchTweet = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosInstance.get("/post");
+      setTweets(res.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!user) return null;
+
+  const userTweets = tweets.filter(
+    (tweet: any) => tweet.author?._id === user?._id
+  );
+
+  return (
+    <div className="min-h-screen bg-black">
+      <div className="sticky top-0 bg-black/90 backdrop-blur-md border-b border-gray-800 z-10">
+        <div className="flex items-center px-4 py-3 space-x-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-2 rounded-full hover:bg-gray-900"
+          >
+            <ArrowLeft className="h-5 w-5 text-white" />
+          </Button>
+
+          <div>
+            <h1 className="text-xl font-bold text-white">
+              {user.displayName}
+            </h1>
+
+            <p className="text-sm text-gray-400">
+              {userTweets.length} posts
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative">
+        <div className="h-48 bg-gradient-to-r from-blue-600 to-purple-600 relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70"
+          >
+            <Camera className="h-5 w-5 text-white" />
+          </Button>
+        </div>
+
+        <div className="absolute -bottom-16 left-4">
+          <div className="relative">
+            <Avatar className="h-32 w-32 border-4 border-black">
+              <AvatarImage
+                src={user.avatar}
+                alt={user.displayName}
+              />
+
+              <AvatarFallback className="text-2xl">
+                {user.displayName[0]}
+              </AvatarFallback>
+            </Avatar>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute bottom-2 right-2 p-2 rounded-full bg-black/70 hover:bg-black/90"
+            >
+              <Camera className="h-4 w-4 text-white" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex justify-end p-4">
+          <Button
+            variant="outline"
+            className="border-gray-600 text-white bg-gray-950 font-semibold rounded-full px-6"
+            onClick={() => setShowEditModal(true)}
+          >
+            Edit profile
+          </Button>
+        </div>
+      </div>
+
+      <div className="px-4 pb-4 mt-12">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              {user.displayName}
+            </h1>
+
+            <p className="text-gray-400">
+              @{user.username}
+            </p>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-2 rounded-full hover:bg-gray-900"
+          >
+            <MoreHorizontal className="h-5 w-5 text-gray-400" />
+          </Button>
+        </div>
+
+        {user.bio && (
+          <p className="text-white mb-3 leading-relaxed">
+            {user.bio}
+          </p>
+        )}
+
+        <div className="flex items-center flex-wrap gap-4 text-gray-400 text-sm mb-3">
+          <div className="flex items-center space-x-1">
+            <MapPin className="h-4 w-4" />
+            <span>{user.location ? user.location : "Earth"}</span>
+          </div>
+
+          <div className="flex items-center space-x-1">
+            <LinkIcon className="h-4 w-4" />
+
+            <span className="text-blue-400">
+              {user.website ? user.website : "example.com"}
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-1">
+            <Calendar className="h-4 w-4" />
+            <span>
+              Joined{" "}
+              {user.joinedDate &&
+                new Date(user.joinedDate).toLocaleDateString(
+                  "en-US",
+                  {
+                    month: "long",
+                    year: "numeric",
+                  }
+                )}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-5 bg-transparent border-b border-gray-800 rounded-none h-auto">
+          {[
+            "posts",
+            "replies",
+            "highlights",
+            "articles",
+            "media",
+          ].map((tab) => (
+            <TabsTrigger
+              key={tab}
+              value={tab}
+              className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold capitalize"
+            >
+              {tab}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value="posts" className="mt-0">
+          <div className="divide-y divide-gray-800">
+            {loading ? (
+              <Card className="bg-black border-none">
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-400">
+                    Loading tweets...
+                  </p>
+                </CardContent>
+              </Card>
+            ) : userTweets.length === 0 ? (
+              <Card className="bg-black border-none">
+                <CardContent className="py-12 text-center">
+                  <div className="text-gray-400">
+                    <h3 className="text-2xl font-bold mb-2">
+                      You haven't posted yet
+                    </h3>
+
+                    <p>
+                      When you post, it will show up here.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              userTweets.map((tweet: any) => (
+                <TweetCard
+                  key={tweet._id}
+                  tweet={tweet}
+                />
+              ))
+            )}
+          </div>
+        </TabsContent>
+
+        {["replies", "highlights", "articles", "media"].map(
+          (tab) => (
+            <TabsContent
+              key={tab}
+              value={tab}
+              className="mt-0"
+            >
+              <Card className="bg-black border-none">
+                <CardContent className="py-12 text-center">
+                  <div className="text-gray-400">
+                    <h3 className="text-2xl font-bold mb-2 capitalize">
+                      No {tab} yet
+                    </h3>
+
+                    <p>
+                      Content will appear here later.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )
+        )}
+      </Tabs>
+
+      <EditProfile
+        isopen={showEditModal}
+        onclose={() => setShowEditModal(false)}
+      />
+    </div>
+  );
+};
+
+export default ProfilePage;
