@@ -131,48 +131,54 @@ export const AuthProvider: React.FC<{
 
   // Login
 
-  const login = async (
-    email: string,
-    password: string
-  ) => {
-    setIsLoading(true);
+ const login = async (
+  email: string,
+  password: string
+) => {
+  setIsLoading(true);
 
-    try {
-      const userCredential =
-        await signInWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
+  try {
+    const userCredential =
+      await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
 
-      const firebaseUser =
-        userCredential.user;
+    const firebaseUser =
+      userCredential.user;
 
-      const res =
-        await axiosInstance.get(
-          "/loggedinuser",
-          {
-            params: {
-              email: firebaseUser.email,
-            },
-          }
-        );
+    const res =
+      await axiosInstance.get(
+        "/loggedinuser",
+        {
+          params: {
+            email: firebaseUser.email,
+          },
+        }
+      );
 
-      if (res.data) {
-        setUser(res.data);
+    if (res.data) {
+      setUser(res.data);
 
-        localStorage.setItem(
-          "twitter-user",
-          JSON.stringify(res.data)
-        );
-      }
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setIsLoading(false);
+      localStorage.setItem(
+        "twitter-user",
+        JSON.stringify(res.data)
+      );
     }
-  };
+  } catch (error: any) {
+    console.error(
+      "LOGIN ERROR:",
+      error
+    );
 
+    alert(
+      `${error.code} : ${error.message}`
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
   // Signup
 
   const signup = async (
