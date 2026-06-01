@@ -12,7 +12,10 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://twiller-2-0-frontend.onrender.com",
+    ],
     credentials: true,
   })
 );
