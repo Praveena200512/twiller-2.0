@@ -1,23 +1,61 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { Card, CardContent } from "./ui/card";
 import LoadingSpinner from "./loading-spinner";
 import TweetCard from "./TweetCard";
 import TweetComposer from "./TweetComposer";
 import axiosInstance from "@/lib/axiosInstance";
+import { useAuth } from "../context/AuthContext";
 
 const Feed = () => {
+  const { user } = useAuth();
+
   const [tweets, setTweets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchTweet = async () => {
+  const tweetsRef = useRef<any[]>([]);
+  const shownNotificationIds = useRef<string[]>([]);
+
+  const showKeywordNotification = async (tweet: any) => {
+    if (!user?.keywordNotificationsEnabled) return;
+    if (!tweet?.content) return;
+    if (!/\b(cricket|science)\b/i.test(tweet.content)) return;
+    if (shownNotificationIds.current.includes(tweet._id)) return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+
+    new Notification("Keyword Tweet Alert", {
+      body: tweet.content,
+    });
+
+    shownNotificationIds.current.push(tweet._id);
+  };
+
+  const fetchTweet = async (checkNotifications = false) => {
     try {
-      setLoading(true);
+      if (!checkNotifications) {
+        setLoading(true);
+      }
 
       const res = await axiosInstance.get("/post");
 
-      console.log("TWEETS:", res.data);
+      if (checkNotifications) {
+        res.data.forEach((tweet: any) => {
+          const alreadyExists = tweetsRef.current.some(
+            (oldTweet) => oldTweet._id === tweet._id
+          );
 
+          if (!alreadyExists) {
+            showKeywordNotification(tweet);
+          }
+        });
+      } else {
+        shownNotificationIds.current = res.data.map(
+          (tweet: any) => tweet._id
+        );
+      }
+
+      tweetsRef.current = res.data;
       setTweets(res.data);
     } catch (error: any) {
       console.log("STATUS:", error.response?.status);
@@ -30,10 +68,18 @@ const Feed = () => {
 
   useEffect(() => {
     fetchTweet();
+
+    const interval = setInterval(() => {
+      fetchTweet(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleNewTweet = (newTweet: any) => {
+    tweetsRef.current = [newTweet, ...tweetsRef.current];
     setTweets((prev) => [newTweet, ...prev]);
+    showKeywordNotification(newTweet);
   };
 
   return (
@@ -76,10 +122,7 @@ const Feed = () => {
           </Card>
         ) : (
           tweets.map((item: any) => (
-            <TweetCard
-              key={item._id}
-              tweet={item}
-            />
+            <TweetCard key={item._id} tweet={item} />
           ))
         )}
       </div>

@@ -29,6 +29,7 @@ interface User {
   email: string;
   website: string;
   location: string;
+  keywordNotificationsEnabled?: boolean;
 }
 
 interface AuthContextType {
@@ -53,6 +54,10 @@ interface AuthContextType {
     website: string;
     avatar: string;
   }) => Promise<void>;
+
+  updateKeywordNotifications: (
+    enabled: boolean
+  ) => Promise<void>;
 
   logout: () => Promise<void>;
 
@@ -131,54 +136,55 @@ export const AuthProvider: React.FC<{
 
   // Login
 
- const login = async (
-  email: string,
-  password: string
-) => {
-  setIsLoading(true);
+  const login = async (
+    email: string,
+    password: string
+  ) => {
+    setIsLoading(true);
 
-  try {
-    const userCredential =
-      await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
+    try {
+      const userCredential =
+        await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+
+      const firebaseUser =
+        userCredential.user;
+
+      const res =
+        await axiosInstance.get(
+          "/loggedinuser",
+          {
+            params: {
+              email: firebaseUser.email,
+            },
+          }
+        );
+
+      if (res.data) {
+        setUser(res.data);
+
+        localStorage.setItem(
+          "twitter-user",
+          JSON.stringify(res.data)
+        );
+      }
+    } catch (error: any) {
+      console.error(
+        "LOGIN ERROR:",
+        error
       );
 
-    const firebaseUser =
-      userCredential.user;
-
-    const res =
-      await axiosInstance.get(
-        "/loggedinuser",
-        {
-          params: {
-            email: firebaseUser.email,
-          },
-        }
+      alert(
+        `${error.code} : ${error.message}`
       );
-
-    if (res.data) {
-      setUser(res.data);
-
-      localStorage.setItem(
-        "twitter-user",
-        JSON.stringify(res.data)
-      );
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error: any) {
-    console.error(
-      "LOGIN ERROR:",
-      error
-    );
+  };
 
-    alert(
-      `${error.code} : ${error.message}`
-    );
-  } finally {
-    setIsLoading(false);
-  }
-};
   // Signup
 
   const signup = async (
@@ -281,85 +287,128 @@ export const AuthProvider: React.FC<{
     }
   };
 
-  // Google Sign In
+  // Update Keyword Notifications
 
- const googlesignin = async () => {
-  setIsLoading(true);
+const updateKeywordNotifications = async (
+  enabled: boolean
+) => {
+  if (!user) return;
+
+  if (enabled) {
+    if (!("Notification" in window)) {
+      alert("This browser does not support notifications.");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+
+    if (permission !== "granted") {
+      alert("Please allow notifications to enable this feature.");
+      return;
+    }
+  }
 
   try {
-    const provider =
-      new GoogleAuthProvider();
-
-    const result =
-      await signInWithPopup(
-        auth,
-        provider
-      );
-
-    const firebaseuser =
-      result.user;
-
-    if (!firebaseuser.email) {
-      throw new Error(
-        "No email found"
-      );
-    }
-
-    let userData;
-
-    try {
-      const res =
-        await axiosInstance.get(
-          "/loggedinuser",
-          {
-            params: {
-              email:
-                firebaseuser.email,
-            },
-          }
-        );
-
-      userData = res.data;
-    } catch {
-      const newuser = {
-        username:
-          firebaseuser.email.split(
-            "@"
-          )[0],
-        displayName:
-          firebaseuser.displayName ||
-          "User",
-        avatar:
-          firebaseuser.photoURL ||
-          "",
-        email:
-          firebaseuser.email,
-      };
-
-      const registerRes =
-        await axiosInstance.post(
-          "/register",
-          newuser
-        );
-
-      userData =
-        registerRes.data;
-    }
-
-    setUser(userData);
-
-    localStorage.setItem(
-      "twitter-user",
-      JSON.stringify(userData)
+    const res = await axiosInstance.patch(
+      `/userupdate/${user.email}`,
+      {
+        keywordNotificationsEnabled: enabled,
+      }
     );
 
-    window.location.href = "/";
+    if (res.data) {
+      setUser(res.data);
+
+      localStorage.setItem(
+        "twitter-user",
+        JSON.stringify(res.data)
+      );
+    }
   } catch (error) {
-    console.error(error);
-  } finally {
-    setIsLoading(false);
+    console.log(error);
   }
 };
+
+  // Google Sign In
+
+  const googlesignin = async () => {
+    setIsLoading(true);
+
+    try {
+      const provider =
+        new GoogleAuthProvider();
+
+      const result =
+        await signInWithPopup(
+          auth,
+          provider
+        );
+
+      const firebaseuser =
+        result.user;
+
+      if (!firebaseuser.email) {
+        throw new Error(
+          "No email found"
+        );
+      }
+
+      let userData;
+
+      try {
+        const res =
+          await axiosInstance.get(
+            "/loggedinuser",
+            {
+              params: {
+                email:
+                  firebaseuser.email,
+              },
+            }
+          );
+
+        userData = res.data;
+      } catch {
+        const newuser = {
+          username:
+            firebaseuser.email.split(
+              "@"
+            )[0],
+          displayName:
+            firebaseuser.displayName ||
+            "User",
+          avatar:
+            firebaseuser.photoURL ||
+            "",
+          email:
+            firebaseuser.email,
+        };
+
+        const registerRes =
+          await axiosInstance.post(
+            "/register",
+            newuser
+          );
+
+        userData =
+          registerRes.data;
+      }
+
+      setUser(userData);
+
+      localStorage.setItem(
+        "twitter-user",
+        JSON.stringify(userData)
+      );
+
+      window.location.href = "/";
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -367,6 +416,7 @@ export const AuthProvider: React.FC<{
         login,
         signup,
         updateProfile,
+        updateKeywordNotifications,
         logout,
         isLoading,
         googlesignin,

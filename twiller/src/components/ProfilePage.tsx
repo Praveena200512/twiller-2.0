@@ -25,7 +25,7 @@ import EditProfile from "./Editprofile";
 import axiosInstance from "@/lib/axiosInstance";
 
 const ProfilePage = () => {
-  const { user } = useAuth();
+  const { user, updateKeywordNotifications } = useAuth();
 
   const [activeTab, setActiveTab] = useState("posts");
   const [showEditModal, setShowEditModal] = useState(false);
@@ -177,6 +177,32 @@ const ProfilePage = () => {
                   }
                 )}
             </span>
+          </div>
+        </div>
+
+        <div className="mt-4 border border-gray-800 rounded-xl p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-white font-semibold">
+                Keyword notifications
+              </h3>
+
+              <p className="text-gray-400 text-sm">
+                Get browser popup notifications for tweets containing cricket or science.
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              className="border-gray-600 text-white bg-gray-950 rounded-full"
+              onClick={() =>
+                updateKeywordNotifications(
+                  !user.keywordNotificationsEnabled
+                )
+              }
+            >
+              {user.keywordNotificationsEnabled ? "Disable" : "Enable"}
+            </Button>
           </div>
         </div>
       </div>

@@ -29,7 +29,32 @@ const TweetComposer = ({ onTweetPosted }: any) => {
 
   const maxlength = 200;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const showKeywordNotification = async (
+    tweetContent: string
+  ) => {
+    if (!user?.keywordNotificationsEnabled) return;
+
+    const hasKeyword =
+      /\b(cricket|science)\b/i.test(tweetContent);
+
+    if (!hasKeyword) return;
+
+    if (!("Notification" in window)) return;
+
+    if (Notification.permission === "default") {
+      await Notification.requestPermission();
+    }
+
+    if (Notification.permission === "granted") {
+      new Notification("Keyword Tweet Alert", {
+        body: tweetContent,
+      });
+    }
+  };
+
+  const handleSubmit = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
 
     if (!user || !content.trim()) return;
@@ -43,20 +68,33 @@ const TweetComposer = ({ onTweetPosted }: any) => {
         image: imageUrl || "",
       };
 
-      const res = await axiosInstance.post("/post", tweetdata);
+      const res = await axiosInstance.post(
+        "/post",
+        tweetdata
+      );
 
       onTweetPosted(res.data);
+
+      await showKeywordNotification(
+        content.trim()
+      );
 
       setContent("");
       setImageUrl("");
     } catch (error: any) {
-      console.log("POST ERROR:", error.response?.data || error.message);
+      console.log(
+        "POST ERROR:",
+        error.response?.data ||
+          error.message
+      );
     } finally {
       setPosting(false);
     }
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -71,23 +109,32 @@ const TweetComposer = ({ onTweetPosted }: any) => {
         formData
       );
 
-      const url = res.data?.data?.display_url;
+      const url =
+        res.data?.data?.display_url;
 
       if (url) {
         setImageUrl(url);
       } else {
-        console.log("Upload failed: No URL returned");
+        console.log(
+          "Upload failed: No URL returned"
+        );
       }
     } catch (error: any) {
-      console.log("UPLOAD ERROR:", error.response?.data || error.message);
+      console.log(
+        "UPLOAD ERROR:",
+        error.response?.data ||
+          error.message
+      );
     } finally {
       setUploading(false);
     }
   };
 
   const charCount = content.length;
-  const isOverLimit = charCount > maxlength;
-  const isNearLimit = charCount > maxlength * 0.8;
+  const isOverLimit =
+    charCount > maxlength;
+  const isNearLimit =
+    charCount > maxlength * 0.8;
 
   if (!user) return null;
 
@@ -97,7 +144,9 @@ const TweetComposer = ({ onTweetPosted }: any) => {
         <div className="flex space-x-4">
           <Avatar className="h-12 w-12">
             <AvatarImage src={user.avatar} />
-            <AvatarFallback>{user.displayName?.[0]}</AvatarFallback>
+            <AvatarFallback>
+              {user.displayName?.[0]}
+            </AvatarFallback>
           </Avatar>
 
           <div className="flex-1">
@@ -105,11 +154,14 @@ const TweetComposer = ({ onTweetPosted }: any) => {
               <Textarea
                 placeholder="What's happening?"
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={(e) =>
+                  setContent(
+                    e.target.value
+                  )
+                }
                 className="bg-transparent border-none text-xl text-white placeholder-gray-500 resize-none min-h-[120px] focus-visible:ring-0"
               />
 
-              {/* IMAGE PREVIEW */}
               {imageUrl && (
                 <div className="mt-2">
                   <img
@@ -128,24 +180,38 @@ const TweetComposer = ({ onTweetPosted }: any) => {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={handlePhotoUpload}
+                      onChange={
+                        handlePhotoUpload
+                      }
                       disabled={uploading}
                     />
                   </label>
 
-                  <Button type="button" variant="ghost">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                  >
                     <BarChart3 className="h-5 w-5" />
                   </Button>
 
-                  <Button type="button" variant="ghost">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                  >
                     <Smile className="h-5 w-5" />
                   </Button>
 
-                  <Button type="button" variant="ghost">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                  >
                     <Calendar className="h-5 w-5" />
                   </Button>
 
-                  <Button type="button" variant="ghost">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                  >
                     <MapPin className="h-5 w-5" />
                   </Button>
                 </div>
@@ -153,10 +219,11 @@ const TweetComposer = ({ onTweetPosted }: any) => {
                 <div className="flex items-center space-x-4">
                   <div className="text-sm text-blue-400 flex items-center space-x-2">
                     <Globe className="h-4 w-4" />
-                    <span>Everyone can reply</span>
+                    <span>
+                      Everyone can reply
+                    </span>
                   </div>
 
-                  {/* CHAR COUNTER */}
                   {charCount > 0 && (
                     <span
                       className={`text-sm ${
@@ -167,18 +234,28 @@ const TweetComposer = ({ onTweetPosted }: any) => {
                           : "text-blue-400"
                       }`}
                     >
-                      {maxlength - charCount}
+                      {maxlength -
+                        charCount}
                     </span>
                   )}
 
-                  <Separator orientation="vertical" className="h-6 bg-gray-700" />
+                  <Separator
+                    orientation="vertical"
+                    className="h-6 bg-gray-700"
+                  />
 
                   <Button
                     type="submit"
-                    disabled={!content.trim() || isOverLimit || posting}
+                    disabled={
+                      !content.trim() ||
+                      isOverLimit ||
+                      posting
+                    }
                     className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 text-white rounded-full px-6"
                   >
-                    {posting ? "Posting..." : "Post"}
+                    {posting
+                      ? "Posting..."
+                      : "Post"}
                   </Button>
                 </div>
               </div>

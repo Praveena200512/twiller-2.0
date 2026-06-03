@@ -8,6 +8,8 @@ import Tweet from "./modals/tweet.js";
 
 dotenv.config();
 
+console.log("MONGODB_URL:", process.env.MONGODB_URL);
+
 const app = express();
 
 app.use(
@@ -83,6 +85,11 @@ app.get("/loggedinuser", async (req, res) => {
       });
     }
 
+    if (user.keywordNotificationsEnabled === undefined) {
+      user.keywordNotificationsEnabled = false;
+      await user.save();
+    }
+
     return res.status(200).json(user);
   } catch (error) {
     return res.status(500).json({
@@ -90,7 +97,6 @@ app.get("/loggedinuser", async (req, res) => {
     });
   }
 });
-
 /* =========================
    UPDATE USER
 ========================= */
@@ -101,7 +107,13 @@ app.patch("/userupdate/:email", async (req, res) => {
 
     const updatedUser = await User.findOneAndUpdate(
       { email },
-      { $set: req.body },
+      {
+        $set: {
+          ...req.body,
+          keywordNotificationsEnabled:
+            req.body.keywordNotificationsEnabled === true,
+        },
+      },
       { new: true }
     );
 
