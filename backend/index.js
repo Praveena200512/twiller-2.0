@@ -8,7 +8,6 @@ import Tweet from "./modals/tweet.js";
 
 dotenv.config();
 
-console.log("MONGODB_URL:", process.env.MONGODB_URL);
 
 const app = express();
 
@@ -17,6 +16,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "https://twiller-2-0-frontend.onrender.com",
+      "https://twiller-2-0-pravee.vercel.app",
     ],
     credentials: true,
   })
