@@ -9,6 +9,8 @@ const TweetSchema = mongoose.Schema({
   retweetedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   image: { type: String, default: null },
   timestamp: { type: Date, default: Date.now() },
+  audioUrl: { type: String, default: "", },
+  audioDuration: {type: Number, default: 0, },
 });
 
 export default mongoose.model("Tweet", TweetSchema);

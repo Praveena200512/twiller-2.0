@@ -111,6 +111,15 @@ export default function TweetCard({ tweet }: any) {
                 />
               </div>
             )}
+            {tweetstate.audioUrl && (
+  <div className="mb-3">
+    <audio
+      controls
+      src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${tweetstate.audioUrl}`}
+      className="w-full"
+    />
+  </div>
+)}
 
             <div className="flex items-center justify-between max-w-md">
               <Button

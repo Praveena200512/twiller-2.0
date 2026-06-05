@@ -1,66 +1,135 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
-import { Card, CardContent } from "./ui/card";
+"use client";
+
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "./ui/tabs";
+
+import {
+  Card,
+  CardContent,
+} from "./ui/card";
+
 import LoadingSpinner from "./loading-spinner";
 import TweetCard from "./TweetCard";
 import TweetComposer from "./TweetComposer";
+import AudioTweetComposer from "./AudioTweetComposer";
 import axiosInstance from "@/lib/axiosInstance";
 import { useAuth } from "../context/AuthContext";
 
 const Feed = () => {
   const { user } = useAuth();
 
-  const [tweets, setTweets] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [tweets, setTweets] =
+    useState<any[]>([]);
+
+  const [loading, setLoading] =
+    useState(false);
 
   const tweetsRef = useRef<any[]>([]);
-  const shownNotificationIds = useRef<string[]>([]);
+  const shownNotificationIds =
+    useRef<string[]>([]);
 
-  const showKeywordNotification = async (tweet: any) => {
-    if (!user?.keywordNotificationsEnabled) return;
-    if (!tweet?.content) return;
-    if (!/\b(cricket|science)\b/i.test(tweet.content)) return;
-    if (shownNotificationIds.current.includes(tweet._id)) return;
-    if (!("Notification" in window)) return;
-    if (Notification.permission !== "granted") return;
-
-    new Notification("Keyword Tweet Alert", {
-      body: tweet.content,
-    });
-
-    shownNotificationIds.current.push(tweet._id);
+  const hasKeyword = (content: string) => {
+    return /\b(cricket|science)\b/i.test(
+      content
+    );
   };
 
-  const fetchTweet = async (checkNotifications = false) => {
+  const showKeywordNotification = (
+    tweet: any
+  ) => {
+    if (
+      !user?.keywordNotificationsEnabled
+    )
+      return;
+
+    if (!tweet?.content) return;
+
+    if (!hasKeyword(tweet.content))
+      return;
+
+    if (
+      shownNotificationIds.current.includes(
+        tweet._id
+      )
+    )
+      return;
+
+    if (!("Notification" in window))
+      return;
+
+    if (
+      Notification.permission !==
+      "granted"
+    )
+      return;
+
+    new Notification(
+      "Keyword Tweet Alert",
+      {
+        body: tweet.content,
+        icon: "/favicon.ico",
+      }
+    );
+
+    shownNotificationIds.current.push(
+      tweet._id
+    );
+  };
+
+  const fetchTweet = async (
+    checkNotifications = false
+  ) => {
     try {
       if (!checkNotifications) {
         setLoading(true);
       }
 
-      const res = await axiosInstance.get("/post");
+      const res =
+        await axiosInstance.get("/post");
 
       if (checkNotifications) {
         res.data.forEach((tweet: any) => {
-          const alreadyExists = tweetsRef.current.some(
-            (oldTweet) => oldTweet._id === tweet._id
-          );
+          const alreadyExists =
+            tweetsRef.current.some(
+              (oldTweet) =>
+                oldTweet._id === tweet._id
+            );
 
           if (!alreadyExists) {
             showKeywordNotification(tweet);
           }
         });
       } else {
-        shownNotificationIds.current = res.data.map(
-          (tweet: any) => tweet._id
-        );
+        shownNotificationIds.current =
+          res.data.map(
+            (tweet: any) => tweet._id
+          );
       }
 
       tweetsRef.current = res.data;
       setTweets(res.data);
     } catch (error: any) {
-      console.log("STATUS:", error.response?.status);
-      console.log("DATA:", error.response?.data);
-      console.log("FULL ERROR:", error);
+      console.log(
+        "STATUS:",
+        error.response?.status
+      );
+      console.log(
+        "DATA:",
+        error.response?.data
+      );
+      console.log(
+        "FULL ERROR:",
+        error
+      );
     } finally {
       setLoading(false);
     }
@@ -74,11 +143,21 @@ const Feed = () => {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.keywordNotificationsEnabled]);
 
-  const handleNewTweet = (newTweet: any) => {
-    tweetsRef.current = [newTweet, ...tweetsRef.current];
-    setTweets((prev) => [newTweet, ...prev]);
+  const handleNewTweet = (
+    newTweet: any
+  ) => {
+    tweetsRef.current = [
+      newTweet,
+      ...tweetsRef.current,
+    ];
+
+    setTweets((prev) => [
+      newTweet,
+      ...prev,
+    ]);
+
     showKeywordNotification(newTweet);
   };
 
@@ -86,10 +165,15 @@ const Feed = () => {
     <div className="min-h-screen">
       <div className="sticky top-0 bg-black/90 backdrop-blur-md border-b border-gray-800 z-10">
         <div className="px-4 py-3">
-          <h1 className="text-xl font-bold text-white">Home</h1>
+          <h1 className="text-xl font-bold text-white">
+            Home
+          </h1>
         </div>
 
-        <Tabs defaultValue="foryou" className="w-full">
+        <Tabs
+          defaultValue="foryou"
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-2 bg-transparent border-b border-gray-800 rounded-none h-auto">
             <TabsTrigger
               value="foryou"
@@ -108,21 +192,34 @@ const Feed = () => {
         </Tabs>
       </div>
 
-      <TweetComposer onTweetPosted={handleNewTweet} />
+      <TweetComposer
+        onTweetPosted={handleNewTweet}
+      />
+
+      <AudioTweetComposer
+        onAudioTweetPosted={handleNewTweet}
+      />
 
       <div className="divide-y divide-gray-800">
         {loading ? (
           <Card className="bg-black border-none">
             <CardContent className="py-12 text-center">
               <div className="text-gray-400 mb-4">
-                <LoadingSpinner size="lg" className="mx-auto mb-4" />
+                <LoadingSpinner
+                  size="lg"
+                  className="mx-auto mb-4"
+                />
+
                 <p>Loading tweets...</p>
               </div>
             </CardContent>
           </Card>
         ) : (
           tweets.map((item: any) => (
-            <TweetCard key={item._id} tweet={item} />
+            <TweetCard
+              key={item._id}
+              tweet={item}
+            />
           ))
         )}
       </div>
