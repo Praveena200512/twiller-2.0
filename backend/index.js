@@ -1,9 +1,9 @@
+
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import multer from "multer";
-import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 
@@ -69,20 +69,44 @@ const isAudioUploadAllowedNow = () => {
 };
 
 const sendOtpMail = async (email, otp) => {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.EMAIL_FROM;
+
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY is missing");
+  }
+
+  if (!fromEmail) {
+    throw new Error("EMAIL_FROM is missing");
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({
+      from: fromEmail,
+      to: [email],
+      subject: "Twiller Audio Tweet OTP",
+      text: `Your OTP for posting an audio tweet is ${otp}. It is valid for 5 minutes. Do not share this OTP with anyone.`,
+    }),
   });
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Twiller Audio Tweet OTP",
-    text: `Your OTP for posting an audio tweet is ${otp}. It is valid for 5 minutes.`,
-  });
+  const result = await response.json();
+
+  if (!response.ok) {
+    console.error("RESEND EMAIL ERROR:", result);
+
+    throw new Error(
+      result.message || result.name || "Resend email delivery failed"
+    );
+  }
+
+  console.log("OTP email accepted by Resend:", result.id);
+
+  return result;
 };
 
 const audioStorage = multer.diskStorage({
