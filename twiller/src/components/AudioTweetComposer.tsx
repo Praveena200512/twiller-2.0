@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef, useState } from "react";
@@ -57,7 +58,11 @@ const AudioTweetComposer = ({
   const [otp, setOtp] = useState("");
   const [otpToken, setOtpToken] = useState("");
   const [recording, setRecording] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  // Separate loading states
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [posting, setPosting] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -178,6 +183,7 @@ const AudioTweetComposer = ({
     }
   };
 
+  // SEND OTP
   const sendOtp = async () => {
     if (!user?.email) {
       alert("Please login first.");
@@ -185,41 +191,91 @@ const AudioTweetComposer = ({
     }
 
     try {
-      setLoading(true);
+      setOtpLoading(true);
+      setOtpSent(false);
+      setOtp("");
+      setOtpToken("");
 
-      await axiosInstance.post("/audio-otp/send", {
-        email: user.email,
-      });
+      console.log("Sending OTP to:", user.email);
+      console.log("Backend URL:", axiosInstance.defaults.baseURL);
+
+      const response = await axiosInstance.post(
+        "/audio-otp/send",
+        {
+          email: user.email,
+        }
+      );
 
       setOtpSent(true);
-      alert("OTP sent to your registered email.");
+
+      console.log("OTP send response:", response.data);
+
+      alert(
+        "OTP sent successfully. Please check your registered email."
+      );
     } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to send OTP");
+      console.error(
+        "OTP sending failed:",
+        error.response?.data || error.message
+      );
+
+      alert(
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to send OTP. Please try again."
+      );
     } finally {
-      setLoading(false);
+      setOtpLoading(false);
     }
   };
 
+  // VERIFY OTP
   const verifyOtp = async () => {
-    if (!user?.email) return;
+    if (!user?.email) {
+      alert("Please login first.");
+      return;
+    }
+
+    if (!otpSent) {
+      alert("Please request an OTP first.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      alert("Please enter the 6-digit OTP.");
+      return;
+    }
 
     try {
-      setLoading(true);
+      setVerifyLoading(true);
 
-      const res = await axiosInstance.post("/audio-otp/verify", {
-        email: user.email,
-        otp,
-      });
+      const res = await axiosInstance.post(
+        "/audio-otp/verify",
+        {
+          email: user.email,
+          otp,
+        }
+      );
 
       setOtpToken(res.data.token);
+
       alert("OTP verified successfully.");
     } catch (error: any) {
-      alert(error.response?.data?.message || "Invalid OTP");
+      console.error(
+        "OTP verification failed:",
+        error.response?.data || error.message
+      );
+
+      alert(
+        error.response?.data?.message || "Invalid OTP"
+      );
     } finally {
-      setLoading(false);
+      setVerifyLoading(false);
     }
   };
 
+  // POST AUDIO TWEET
   const postAudioTweet = async () => {
     if (!user) {
       alert("Please login first.");
@@ -227,7 +283,9 @@ const AudioTweetComposer = ({
     }
 
     if (!isAllowedISTTime()) {
-      alert("Audio tweets are allowed only between 2:00 PM and 7:00 PM IST.");
+      alert(
+        "Audio tweets are allowed only between 2:00 PM and 7:00 PM IST."
+      );
       return;
     }
 
@@ -261,13 +319,17 @@ const AudioTweetComposer = ({
     formData.append("otpToken", otpToken);
 
     try {
-      setLoading(true);
+      setPosting(true);
 
-      const res = await axiosInstance.post("/audio-tweet", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const res = await axiosInstance.post(
+        "/audio-tweet",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
       onAudioTweetPosted(res.data);
 
@@ -284,17 +346,25 @@ const AudioTweetComposer = ({
 
       alert("Audio tweet posted successfully.");
     } catch (error: any) {
-      console.log("AUDIO UPLOAD ERROR:", error.response?.data || error);
+      console.log(
+        "AUDIO UPLOAD ERROR:",
+        error.response?.data || error
+      );
 
-      alert(error.response?.data?.message || "Audio tweet upload failed");
+      alert(
+        error.response?.data?.message ||
+        "Audio tweet upload failed"
+      );
     } finally {
-      setLoading(false);
+      setPosting(false);
     }
   };
 
   return (
     <div className="border-b border-gray-800 p-4 bg-black">
-      <h2 className="text-white font-bold mb-3">Audio Tweet</h2>
+      <h2 className="text-white font-bold mb-3">
+        Audio Tweet
+      </h2>
 
       <textarea
         value={content}
@@ -337,9 +407,14 @@ const AudioTweetComposer = ({
       )}
 
       {audioPreview && (
-        <audio controls src={audioPreview} className="w-full mb-3" />
+        <audio
+          controls
+          src={audioPreview}
+          className="w-full mb-3"
+        />
       )}
 
+      {/* OTP VERIFICATION */}
       <div className="border border-gray-800 rounded-xl p-3 mb-3">
         <p className="text-gray-400 text-sm mb-2">
           OTP verification is required before posting audio.
@@ -349,45 +424,68 @@ const AudioTweetComposer = ({
           <Button
             type="button"
             onClick={sendOtp}
-            disabled={loading}
+            disabled={otpLoading}
             variant="outline"
             className="text-white border-gray-600"
           >
-            Send OTP
+            {otpLoading ? "Sending OTP..." : "Send OTP"}
           </Button>
 
-          {otpSent && (
-            <>
-              <input
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                placeholder="Enter OTP"
-                className="bg-black border border-gray-700 rounded-full px-4 text-white"
-              />
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={otp}
+            onChange={(e) =>
+              setOtp(
+                e.target.value.replace(/\D/g, "").slice(0, 6)
+              )
+            }
+            placeholder="Enter 6-digit OTP"
+            aria-label="Enter 6-digit OTP"
+            className="bg-black border border-gray-700 rounded-full px-4 py-2 text-white"
+          />
 
-              <Button type="button" onClick={verifyOtp} disabled={loading}>
-                Verify OTP
-              </Button>
-            </>
-          )}
+          <Button
+            type="button"
+            onClick={verifyOtp}
+            disabled={
+              !otpSent ||
+              otp.length !== 6 ||
+              verifyLoading
+            }
+          >
+            {verifyLoading ? "Verifying..." : "Verify OTP"}
+          </Button>
         </div>
 
+        {otpSent && !otpToken && (
+          <p className="text-green-400 text-sm mt-2">
+            OTP sent. Check your registered email and enter
+            the 6-digit code.
+          </p>
+        )}
+
         {otpToken && (
-          <p className="text-green-400 text-sm mt-2">OTP verified</p>
+          <p className="text-green-400 text-sm mt-2">
+            OTP verified successfully.
+          </p>
         )}
       </div>
 
       <Button
         onClick={postAudioTweet}
-        disabled={loading}
+        disabled={posting}
         className="rounded-full"
       >
-        {loading ? "Posting..." : "Post Audio Tweet"}
+        {posting ? "Posting..." : "Post Audio Tweet"}
       </Button>
 
       <p className="text-gray-500 text-xs mt-3">
-        Rules: audio must be 5 minutes or less, 100 MB or less, and can be
-        posted only between 2:00 PM and 7:00 PM IST.
+        Rules: audio must be 5 minutes or less, 100 MB or
+        less, and can be posted only between 2:00 PM and
+        7:00 PM IST.
       </p>
     </div>
   );
