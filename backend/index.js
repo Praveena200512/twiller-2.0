@@ -451,7 +451,7 @@ app.post(
 
       const newTweet = new Tweet({
         author,
-        content: content || "",
+        content: content?.trim() || "🎵 Audio Tweet",
         image: null,
         audioUrl,
         audioDuration: duration,
